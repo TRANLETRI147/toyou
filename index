@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thư Gửi Chị <3 </title>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #ffc0cb; /* Màu hồng nhạt */
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+            perspective: 1000px; /* Thêm perspective cho animation 3D mượt mà hơn */
+        }
+
+        .container {
+            text-align: center;
+            position: relative;
+            z-index: 10;
+            perspective: 1000px; /* Áp dụng perspective cho container */
+        }
+
+        /* Hiệu ứng confetti rơi liên tục (giấy kim tuyến rơi) */
+        .confetti-falling {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        /* Modal nhập mật khẩu */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 20;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            min-width: 300px;
+            max-width: 400px; /* Giới hạn chiều rộng để cân đối */
+        }
+
+        .modal-content h2 {
+            color: #ff69b4; /* Màu hồng đậm cho tiêu đề */
+            margin-bottom: 20px;
+        }
+
+        .modal-content input {
+            padding: 10px;
+            margin: 10px;
+            border: 2px solid #ff69b4;
+            border-radius: 5px;
+            width: 200px;
+        }
+
+        .modal-content button {
+            padding: 10px 20px;
+            background-color: #ff69b4;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px;
+        }
+
+        .modal-content button:hover {
+            background-color: #ff1493;
+        }
+
+        /* Bức thư - Cân đối kích thước */
+        .letter {
+            background-color: #fff8dc; /* Màu giấy vàng nhạt như thư */
+            border: 3px solid #8b4513; /* Viền nâu như giấy */
+            border-radius: 10px;
+            padding: 40px;
+            margin: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            width: 350px; /* Đặt width cố định để cân đối */
+            height: 250px; /* Đặt height cố định để không thay đổi khi open/closed */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 18px;
+            color: #333; /* Màu chữ tối để nổi bật trên nền */
+            position: relative;
+            transition: all 0.3s ease;
+            transform-style: preserve-3d; /* Hỗ trợ 3D transform */
+        }
+
+        .letter.closed {
+            background-color: #f5f5f5;
+            cursor: pointer;
+        }
+
+        .letter.closed:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .letter.closed::before {
+            content: "🔒 Nhấp để mở thư (Nhập mật khẩu)";
+            position: absolute;
+            top: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #ff69b4;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        /* Placeholder khi closed để giữ cân đối */
+        .letter.closed .placeholder {
+            display: block;
+            font-size: 16px;
+            color: #8b4513;
+            text-align: center;
+        }
+
+        .letter.closed .letter-content {
+            display: none;
+        }
+
+        .letter.open {
+            background-color: #fff8dc;
+            animation: openLetter 0.5s ease;
+        }
+
+        @keyframes openLetter {
+            0% { 
+                transform: rotateY(0deg) scale(1); 
+            }
+            50% { 
+                transform: rotateY(180deg) scale(1.02); 
+            }
+            100% { 
+                transform: rotateY(360deg) scale(1); 
+            }
+        }
+
+        .letter-content {
+            display: none;
+            color: #8b4513; /* Màu nâu đậm cho nội dung thư */
+            line-height: 1.6;
+            font-style: italic;
+            text-align: center;
+            word-wrap: break-word;
+        }
+
+        .letter.open .letter-content {
+            display: block;
+        }
+
+        .letter.open .placeholder {
+            display: none;
+        }
+
+        /* Ẩn thư ban đầu - không cần nữa vì dùng placeholder */
+    </style>
+</head>
+<body>
+    <!-- Hiệu ứng confetti rơi liên tục -->
+    <div class="confetti-falling" id="confettiFalling"></div>
+
+    <!-- Modal nhập mật khẩu -->
+    <div id="passwordModal" class="modal">
+        <div class="modal-content">
+            <h2>🔑 Mở Thư Chúc Mừng</h2>
+            <p>Nhập mật khẩu để mở thư:</p>
+            <input type="password" id="passwordInput" placeholder="Mật khẩu...">
+            <br>
+            <button onclick="checkPassword()">Xác Nhận</button>
+            <button onclick="closeModal()">Đóng</button>
+        </div>
+    </div>
+
+    <!-- Container chính -->
+    <div class="container">
+        <div class="letter closed" id="letter" onclick="openModal()">
+            <!-- Placeholder khi closed để giữ kích thước cân đối -->
+            <div class="placeholder">
+                📮<br>
+                Thư chúc mừng Trung Thu<br>
+                (Nhấp để mở)
+            </div>
+            <!-- Nội dung thực khi open -->
+            <div class="letter-content" id="letterContent">
+                Chào chị Dethww,<br>
+                Chúc chị Trung Thu vui vẻ, xinh đẹp, tươi tắn hơn cả chị Hằng &lt;3
+            </div>
+        </div>
+    </div>
+
+    <!-- Hiệu ứng pháo kim tuyến -->
+    <div class="fireworks" id="fireworks"></div>
+
+    <script>
+        // Mật khẩu mặc định (bạn có thể thay đổi, ví dụ: "trungthu")
+        const correctPassword = "14122003";
+
+        // Hiệu ứng confetti rơi liên tục (giấy kim tuyến)
+        function createFallingConfetti() {
+            const confettiFalling = document.getElementById('confettiFalling');
+            setInterval(() => {
+                for (let i = 0; i < 5; i++) {
+                    const confetti = document.createElement('div');
+                    confetti.style.position = 'fixed';
+                    confetti.style.left = Math.random() * 100 + 'vw';
+                    confetti.style.top = '-10px';
+                    confetti.style.width = '10px';
+                    confetti.style.height = '10px';
+                    confetti.style.backgroundColor = `hsl(${Math.random() * 360}, 100%, 50%)`;
+                    confetti.style.pointerEvents = 'none';
+                    confetti.style.zIndex = '1';
+                    confetti.style.animation = 'fall 3s linear forwards';
+                    confettiFalling.appendChild(confetti);
+
+                    // Xóa sau khi rơi
+                    setTimeout(() => confetti.remove(), 3000);
+                }
+            }, 500);
+        }
+
+        // CSS animation cho rơi
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes fall {
+                to {
+                    transform: translateY(100vh) rotate(360deg);
+                    opacity: 0;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Mở modal
+        function openModal() {
+            document.getElementById('passwordModal').style.display = 'flex';
+        }
+
+        // Đóng modal
+        function closeModal() {
+            document.getElementById('passwordModal').style.display = 'none';
+        }
+
+        // Kiểm tra mật khẩu
+        function checkPassword() {
+            const input = document.getElementById('passwordInput').value;
+            if (input === correctPassword) {
+                closeModal();
+                const letter = document.getElementById('letter');
+                letter.classList.remove('closed');
+                letter.classList.add('open');
+                // Không cần set display block nữa vì dùng class để toggle
+
+                // Kích hoạt pháo kim tuyến hai bên bắn vào giữa
+                fireConfettiFireworks();
+            } else {
+                alert('Mật khẩu sai! Hãy thử lại.');
+                document.getElementById('passwordInput').value = '';
+            }
+        }
+
+        // Hiệu ứng pháo kim tuyến (hai bên bắn vào giữa)
+        function fireConfettiFireworks() {
+            // Pháo từ bên trái
+            confetti({
+                particleCount: 100,
+                startVelocity: 30,
+                spread: 360,
+                origin: { x: 0, y: 0.5 }, // Từ bên trái giữa
+                colors: ['#ff69b4', '#ffc0cb', '#ff1493', '#ffd700']
+            });
+
+            // Pháo từ bên phải
+            setTimeout(() => {
+                confetti({
+                    particleCount: 100,
+                    startVelocity: 30,
+                    spread: 360,
+                    origin: { x: 1, y: 0.5 }, // Từ bên phải giữa
+                    colors: ['#ff69b4', '#ffc0cb', '#ff1493', '#ffd700']
+                });
+            }, 250);
+
+            // Confetti giữa chúc mừng
+            setTimeout(() => {
+                confetti({
+                    particleCount: 200,
+                    spread: 70,
+                    origin: { y: 0.6 }
+                });
+            }, 500);
+        }
+
+        // Khởi chạy hiệu ứng rơi confetti khi load
+        window.onload = function() {
+            createFallingConfetti();
+        };
+
+        // Đóng modal khi click ngoài
+        window.onclick = function(event) {
+            const modal = document.getElementById('passwordModal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        }
+    </script>
+</body>
+</html>
